@@ -427,7 +427,6 @@ function mountFabDrawer() {
   const drawer = document.getElementById("tm-drawer");
   const backdrop = document.getElementById("tm-backdrop");
   const body = document.getElementById("tm-body");
-  const refreshBtn = document.getElementById("tm-refresh");
   const closeBtn = document.getElementById("tm-close");
   const pushBtn = document.getElementById("tm-push");
 
@@ -620,7 +619,6 @@ function mountFabDrawer() {
   fab.addEventListener("click", openDrawer);
   backdrop.addEventListener("click", closeDrawer);
   closeBtn.addEventListener("click", closeDrawer);
-  refreshBtn.addEventListener("click", load);
 }
 
 start();
