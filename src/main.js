@@ -463,7 +463,12 @@ function mountFabDrawer() {
     }
   }
 
-  function openDrawer() { drawer.classList.add("open"); backdrop.classList.add("open"); load(); }
+  function openDrawer() {
+    drawer.classList.add("open");
+    backdrop.classList.add("open");
+    body.dataset.fresh = "1";
+    load();
+  }
   function closeDrawer() {
     drawer.classList.remove("open");
     backdrop.classList.remove("open");
@@ -542,6 +547,14 @@ function mountFabDrawer() {
 
       bySession[sess].sort((a, b) => a.index - b.index).forEach((w) => body.appendChild(makeRow(w)));
     });
+
+    if (body.dataset.fresh === "1") {
+      const rows = body.querySelectorAll(".tm-row");
+      rows.forEach((row, i) => { row.style.animationDelay = (i * 28) + "ms"; });
+      // Clear after the longest stagger + animation completes so re-renders skip it.
+      const total = rows.length * 28 + 400;
+      setTimeout(() => { delete body.dataset.fresh; }, total);
+    }
 
     if (tickerHandle) clearInterval(tickerHandle);
     tickerHandle = setInterval(tickDurations, 1000);

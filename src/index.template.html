@@ -8,6 +8,19 @@
 <title>Apiary</title>
 <style id="wterm-css">__WTERM_CSS__</style>
 <style id="app-css">
+:root {
+  --honey: #f5b841;
+  --honey-deep: #c48e1a;
+  --honey-glow: rgba(245, 184, 65, 0.18);
+  --comb: #0a0908;
+  --comb-line: rgba(245, 184, 65, 0.13);
+  --ink: #f4ede0;
+  --ink-dim: #948b7c;
+  --ink-fade: #5e574b;
+  --warn: #e85d4f;
+  --mono: ui-monospace, "JetBrains Mono", "SF Mono", "Menlo", "Consolas", "Roboto Mono", monospace;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -34,79 +47,331 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* FAB drawer */
+/* FAB — hexagonal honey-cell trigger */
 #tm-fab {
   position: fixed;
-  bottom: 50px;
-  right: 10px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.45);
-  border: 1px solid rgba(255,255,255,0.12);
-  font-size: 16px;
-  line-height: 34px;
-  text-align: center;
+  bottom: 46px;
+  right: 12px;
+  width: 46px;
+  height: 52px;
+  background: transparent;
+  border: 0;
+  padding: 0;
   z-index: 9999;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  transition: background 0.15s, color 0.15s, opacity 0.15s;
-  opacity: 0.7;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55));
 }
-#tm-fab:hover, #tm-fab:active { background: rgba(30,30,30,0.85); color: #fff; opacity: 1; }
-#tm-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }
+#tm-fab svg { width: 100%; height: 100%; display: block; overflow: visible; }
+#tm-fab .hex-fill   { fill: rgba(8, 6, 2, 0.78); transition: fill 180ms ease; }
+#tm-fab .hex-stroke { fill: none; stroke: rgba(245, 184, 65, 0.55); stroke-width: 1.6; transition: stroke 180ms ease, stroke-width 180ms ease; }
+#tm-fab .hex-glow   { fill: none; stroke: rgba(245, 184, 65, 0.0); stroke-width: 4; filter: blur(6px); transition: stroke 220ms ease; }
+#tm-fab .hex-dot    { fill: rgba(245, 184, 65, 0.78); transition: fill 180ms ease; }
+#tm-fab:hover .hex-fill,
+#tm-fab:active .hex-fill { fill: rgba(30, 18, 4, 0.92); }
+#tm-fab:hover .hex-stroke,
+#tm-fab:active .hex-stroke { stroke: var(--honey); stroke-width: 2; }
+#tm-fab:hover .hex-glow,
+#tm-fab:active .hex-glow { stroke: rgba(245, 184, 65, 0.45); }
+#tm-fab:hover .hex-dot,
+#tm-fab:active .hex-dot { fill: var(--honey); }
+@media (prefers-reduced-motion: no-preference) {
+  #tm-fab .hex-stroke { animation: tm-fab-breathe 4.2s ease-in-out infinite; }
+  @keyframes tm-fab-breathe {
+    0%, 100% { stroke-opacity: 0.45; }
+    50%      { stroke-opacity: 0.85; }
+  }
+}
+
+/* Backdrop — warm tint, soft blur */
+#tm-backdrop {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 100% 50%, rgba(40, 22, 4, 0.55), rgba(0, 0, 0, 0.78) 70%);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  z-index: 9998;
+  display: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+#tm-backdrop.open { display: block; opacity: 1; }
+
+/* Drawer — slim bezel, amber spine, honeycomb mist */
 #tm-drawer {
   position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(340px, 90vw);
-  background: #1e1e1e; color: #fff; z-index: 9999;
-  display: none; flex-direction: column;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.5);
-  font-family: system-ui, sans-serif; font-size: 15px;
+  width: min(360px, 92vw);
+  background:
+    linear-gradient(180deg, rgba(245, 184, 65, 0.04), transparent 22%),
+    radial-gradient(120% 60% at 100% 0%, rgba(245, 184, 65, 0.07), transparent 60%),
+    var(--comb);
+  color: var(--ink);
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  font-family: var(--mono);
+  font-size: 13px;
+  border-left: 1px solid var(--comb-line);
+  box-shadow:
+    -28px 0 60px rgba(0, 0, 0, 0.65),
+    inset 1px 0 0 rgba(245, 184, 65, 0.08);
+  transform: translateX(102%);
+  transition: transform 320ms cubic-bezier(0.2, 0.85, 0.25, 1);
 }
-#tm-drawer.open, #tm-backdrop.open { display: flex; }
-.tm-hd { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid #444; gap: 8px; }
-.tm-hd h3 { flex: 1; margin: 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.tm-hd h3 svg { width: 22px; height: 22px; flex-shrink: 0; }
-.tm-hd button { background: none; border: none; color: #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+#tm-drawer.open { display: flex; transform: translateX(0); }
+
+/* Header */
+.tm-hd {
+  display: flex;
+  align-items: center;
+  padding: 18px 16px 16px;
+  gap: 8px;
+  position: relative;
+  border-bottom: 1px solid var(--comb-line);
+}
+.tm-hd::after {
+  content: "";
+  position: absolute;
+  left: 16px; right: 32%; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--honey) 0%, transparent 100%);
+  opacity: 0.7;
+}
+.tm-hd h3 {
+  flex: 1; margin: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  color: var(--ink);
+  display: flex; align-items: center; gap: 11px;
+}
+.tm-hd h3 svg { width: 24px; height: 24px; flex-shrink: 0; }
+.tm-hd button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms, background 150ms, border-color 150ms;
+}
 .tm-hd button svg { width: 18px; height: 18px; display: block; }
-.tm-hd button:active { background: #333; }
-.tm-hd button.on { color: #8cf; }
-.tm-body { flex: 1; overflow-y: auto; padding: 4px 0; }
-.tm-err { background: #5a1a1a; color: #fff; padding: 8px 14px; font-size: 13px; }
-.tm-sess { padding: 10px 14px 4px; display: flex; align-items: center; border-top: 1px solid #2a2a2a; }
-.tm-sess:first-child { border-top: none; }
-.tm-sess-name { flex: 1; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
-.tm-sess-add { background: none; border: 1px solid #444; color: #ccc; width: 28px; height: 28px; border-radius: 4px; font-size: 18px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.tm-sess-add:active { background: #333; }
-.tm-row { display: flex; align-items: center; padding: 10px 14px; cursor: pointer; border-left: 3px solid transparent; -webkit-tap-highlight-color: transparent; gap: 8px; }
-.tm-row:active { background: #2a2a2a; }
-.tm-row.active { border-left-color: #4ab0ff; background: rgba(0,122,204,0.22); }
-.tm-row.active .tm-name { color: #fff; font-weight: 600; }
-.tm-row.active .tm-idx { color: #cfe6ff; }
-.tm-row.active .tm-duration { color: #dfeeff; }
-.tm-idx { color: #888; font-variant-numeric: tabular-nums; min-width: 18px; }
-.tm-status { flex-shrink: 0; }
-.tm-status.busy { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.75); animation: tm-spin 0.7s linear infinite; box-sizing: border-box; }
+.tm-hd button:hover  { color: var(--ink); background: rgba(245, 184, 65, 0.06); border-color: var(--comb-line); }
+.tm-hd button:active { background: rgba(245, 184, 65, 0.12); }
+.tm-hd button.on { color: var(--honey); border-color: rgba(245, 184, 65, 0.32); background: rgba(245, 184, 65, 0.06); }
+
+/* Body */
+.tm-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 184, 65, 0.2) transparent;
+}
+.tm-body::-webkit-scrollbar { width: 6px; }
+.tm-body::-webkit-scrollbar-thumb { background: rgba(245, 184, 65, 0.18); border-radius: 3px; }
+.tm-body::-webkit-scrollbar-track { background: transparent; }
+
+/* Error */
+.tm-err {
+  background: rgba(232, 93, 79, 0.10);
+  color: #ffb6ad;
+  padding: 10px 16px;
+  margin: 8px 0;
+  font-size: 12px;
+  border-left: 2px solid var(--warn);
+  letter-spacing: 0.02em;
+}
+
+/* Session header */
+.tm-sess {
+  padding: 18px 16px 6px;
+  display: flex; align-items: center;
+  margin-top: 4px;
+}
+.tm-sess:not(:first-child) {
+  border-top: 1px solid rgba(245, 184, 65, 0.06);
+  margin-top: 10px;
+  padding-top: 16px;
+}
+.tm-sess-name {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--honey);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tm-sess-name::before {
+  content: "";
+  width: 9px; height: 10px;
+  background: var(--honey);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.tm-sess-add {
+  background: transparent;
+  border: 1px solid var(--comb-line);
+  color: var(--ink-dim);
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+.tm-sess-add:hover  { color: var(--honey); border-color: rgba(245, 184, 65, 0.4); background: rgba(245, 184, 65, 0.05); }
+.tm-sess-add:active { background: rgba(245, 184, 65, 0.12); }
+
+/* Row */
+.tm-row {
+  display: flex; align-items: center;
+  padding: 11px 16px 11px 13px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  gap: 10px;
+  position: relative;
+  transition: background 150ms, border-color 150ms;
+}
+#tm-drawer.open .tm-body[data-fresh="1"] .tm-row {
+  animation: tm-row-in 360ms cubic-bezier(0.2, 0.85, 0.25, 1) backwards;
+}
+@keyframes tm-row-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.tm-row:hover  { background: rgba(245, 184, 65, 0.035); }
+.tm-row:active { background: rgba(245, 184, 65, 0.07); }
+.tm-row.active {
+  border-left-color: var(--honey);
+  background:
+    linear-gradient(90deg, rgba(245, 184, 65, 0.13), rgba(245, 184, 65, 0.02) 60%, transparent);
+  box-shadow: inset 0 0 32px rgba(245, 184, 65, 0.04);
+}
+.tm-row.active .tm-name { color: #fff8e7; font-weight: 500; }
+.tm-row.active .tm-idx { color: var(--honey); }
+.tm-row.active .tm-duration { color: rgba(245, 184, 65, 0.78); }
+
+.tm-idx {
+  color: var(--ink-fade);
+  font-variant-numeric: tabular-nums;
+  min-width: 18px;
+  font-size: 11px;
+}
+
+/* Hexagonal busy indicator — a single honey cell pulsing */
+.tm-status { flex-shrink: 0; width: 12px; height: 13px; }
+.tm-status.busy {
+  background: var(--honey);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  animation: tm-pulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--honey-glow);
+}
+@keyframes tm-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.72); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
 .tm-status.idle { display: none; }
-@keyframes tm-spin { to { transform: rotate(360deg); } }
-.tm-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tm-duration { color: #bbb; font-size: 12px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+.tm-name {
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-dim);
+  letter-spacing: 0.01em;
+}
+.tm-duration {
+  color: var(--ink-fade);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
 .tm-duration:empty { display: none; }
-.tm-kill { background: none; border: none; color: #888; font-size: 16px; padding: 4px 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 4px; }
-.tm-kill:active, .tm-kill:hover { background: #5a1a1a; color: #fff; }
-.tm-row.confirm { background: #2a1a1a; border-left-color: #cc3333; }
-.tm-row.confirm .tm-name { color: #ff8888; }
-.tm-confirm-btn { background: #5a1a1a; border: none; color: #fff; padding: 4px 10px; border-radius: 4px; margin-left: 4px; cursor: pointer; font-size: 13px; }
-.tm-cancel-btn { background: #333; border: none; color: #ccc; padding: 4px 10px; border-radius: 4px; margin-left: 4px; cursor: pointer; font-size: 13px; }
-.tm-empty { padding: 20px 14px; color: #888; text-align: center; }
+
+.tm-kill {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-fade);
+  font-size: 13px;
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 5px;
+  transition: color 150ms, background 150ms, border-color 150ms;
+}
+.tm-kill:hover, .tm-kill:active {
+  color: #ffb6ad;
+  background: rgba(232, 93, 79, 0.10);
+  border-color: rgba(232, 93, 79, 0.4);
+}
+
+.tm-row.confirm {
+  background: rgba(232, 93, 79, 0.08);
+  border-left-color: var(--warn);
+  padding-right: 10px;
+}
+.tm-row.confirm .tm-name { color: #ffd1cc; font-size: 12px; }
+.tm-confirm-btn {
+  background: rgba(232, 93, 79, 0.20);
+  border: 1px solid rgba(232, 93, 79, 0.55);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+}
+.tm-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--comb-line);
+  color: var(--ink-dim);
+  padding: 5px 10px;
+  border-radius: 4px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.tm-empty {
+  padding: 28px 18px;
+  color: var(--ink-fade);
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
 </style>
 </head>
 <body>
 <div id="terminal"></div>
-<div id="tm-fab" aria-label="tabs menu">&bull;&bull;&bull;</div>
+<button id="tm-fab" type="button" aria-label="tabs menu">
+  <svg viewBox="0 0 46 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <polygon class="hex-glow"   points="23,3 42,14 42,38 23,49 4,38 4,14" stroke-linejoin="round"/>
+    <polygon class="hex-fill"   points="23,3 42,14 42,38 23,49 4,38 4,14"/>
+    <polygon class="hex-stroke" points="23,3 42,14 42,38 23,49 4,38 4,14" stroke-linejoin="round"/>
+    <circle class="hex-dot" cx="15" cy="26" r="2.1"/>
+    <circle class="hex-dot" cx="23" cy="26" r="2.1"/>
+    <circle class="hex-dot" cx="31" cy="26" r="2.1"/>
+  </svg>
+</button>
 <div id="tm-backdrop"></div>
 <div id="tm-drawer" role="dialog" aria-label="tabs">
   <div class="tm-hd">
