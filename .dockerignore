@@ -1,0 +1,7 @@
+node_modules
+src/node_modules
+.git
+*.bak
+*.bak.*
+*.pre-*
+__pycache__

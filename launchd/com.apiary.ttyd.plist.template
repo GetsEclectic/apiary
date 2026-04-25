@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.apiary.ttyd</string>
+  <key>UserName</key><string>${APIARY_USER}</string>
+  <key>GroupName</key><string>${APIARY_GROUP}</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>3</integer>
+  <key>WorkingDirectory</key><string>${REPO_DIR}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>${HOME}</string>
+    <key>TERM</key><string>xterm-256color</string>
+    <key>TTYD</key><string>1</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <!-- Loopback only — com.apiary.tmux-api terminates mTLS on :3443 and reverse-
+       proxies everything it doesn't serve itself (/sw.js, /manifest.webmanifest,
+       /push/*, /windows, etc.) to this port. Must stay architecturally aligned
+       with units/apiary-ttyd.service.template. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>${TTYD_BIN}</string>
+    <string>-i</string><string>127.0.0.1</string>
+    <string>-p</string><string>3441</string>
+    <string>-t</string><string>titleFixed=apiary</string>
+    <string>-t</string><string>scrollback=10000</string>
+    <string>-t</string><string>fontSize=16</string>
+    <string>-t</string><string>rendererType=dom</string>
+    <string>-I</string><string>${REPO_DIR}/index.html</string>
+    <string>-W</string>
+    <string>${TMUX_BIN}</string>
+    <string>new-session</string><string>-A</string><string>-s</string><string>main</string>
+  </array>
+  <key>StandardOutPath</key><string>${STATE_DIR}/log/ttyd.out</string>
+  <key>StandardErrorPath</key><string>${STATE_DIR}/log/ttyd.err</string>
+</dict>
+</plist>

@@ -1,0 +1,78 @@
+name: test
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux-container:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build test image
+        run: docker build -f test/container/Dockerfile -t apiary-test .
+      - name: Run container smoke test
+        run: test/container/test.sh
+        env:
+          APIARY_TEST_IMAGE: apiary-test
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install deps
+        run: brew install ttyd tmux gettext node python@3.12 jq bash
+      - name: Run installer
+        run: ./install.sh
+        env:
+          APIARY_STATE_DIR: ${{ github.workspace }}/.apiary-state
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 30); do
+            if sudo launchctl print system/com.apiary.ttyd >/dev/null 2>&1 \
+               && sudo launchctl print system/com.apiary.tmux-api >/dev/null 2>&1 \
+               && sudo launchctl print system/com.apiary.tmux >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          for i in $(seq 1 15); do
+            if nc -z localhost 3443; then break; fi
+            sleep 1
+          done
+      - name: mTLS smoke — ttyd via :3443
+        working-directory: ${{ github.workspace }}/.apiary-state
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            --cacert ca.crt --cert client.crt --key client.key \
+            https://localhost:3443/)
+          echo "HTTP $code"
+          test "$code" = "200"
+      - name: mTLS smoke — tmux-api /windows via :3443
+        working-directory: ${{ github.workspace }}/.apiary-state
+        run: |
+          curl -sS --cacert ca.crt --cert client.crt --key client.key \
+            https://localhost:3443/windows | tee /tmp/windows.json
+          jq -e '.windows | length >= 1' /tmp/windows.json
+      - name: tmux session check
+        run: tmux list-sessions | grep -E '^main:'
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          for svc in tmux tmux-api ttyd; do
+            echo "=== launchctl print system/com.apiary.$svc ==="
+            sudo launchctl print "system/com.apiary.$svc" 2>&1 || true
+          done
+          for f in "$APIARY_STATE_DIR"/log/*.out "$APIARY_STATE_DIR"/log/*.err; do
+            [ -f "$f" ] || continue
+            echo "=== $f ==="
+            cat "$f" || true
+          done
+        env:
+          APIARY_STATE_DIR: ${{ github.workspace }}/.apiary-state
+      - name: Cleanup
+        if: always()
+        run: |
+          for svc in ttyd tmux-api tmux; do
+            sudo launchctl bootout "system/com.apiary.$svc" 2>/dev/null || true
+          done
+          sudo rm -f /Library/LaunchDaemons/com.apiary.*.plist

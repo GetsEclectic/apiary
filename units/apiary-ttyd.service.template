@@ -1,0 +1,27 @@
+[Unit]
+Description=Apiary — ttyd web terminal (loopback, fronted by apiary-tmux-api.service for mTLS + PWA)
+After=network-online.target apiary-tmux.service
+Wants=network-online.target apiary-tmux.service
+
+[Service]
+Type=simple
+Environment=TERM=xterm-256color
+Environment=TTYD=1
+# Loopback only — apiary-tmux-api.service terminates mTLS on :3443 and reverse-
+# proxies everything it doesn't serve itself (/sw.js, /manifest.webmanifest,
+# /push/*, /windows, etc.) to this port. The port is configurable at the proxy
+# end via the TTYD_UPSTREAM_PORT env var.
+ExecStart=${TTYD_BIN} \
+  -i 127.0.0.1 -p 3441 \
+  -t titleFixed=apiary \
+  -t scrollback=10000 \
+  -t fontSize=16 \
+  -t rendererType=dom \
+  -I ${REPO_DIR}/index.html \
+  -W \
+  ${TMUX_BIN} new-session -A -s main
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

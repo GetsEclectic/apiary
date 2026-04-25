@@ -1,0 +1,13 @@
+[Unit]
+Description=Apiary — tmux session "main" (long-lived, outlives ttyd)
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+KillMode=process
+Environment=TERM=xterm-256color
+ExecStart=/bin/sh -c '${TMUX_BIN} has-session -t main 2>/dev/null || ${TMUX_BIN} new-session -d -s main'
+ExecStop=${TMUX_BIN} kill-session -t main
+
+[Install]
+WantedBy=default.target

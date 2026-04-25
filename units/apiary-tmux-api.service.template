@@ -1,0 +1,21 @@
+[Unit]
+Description=Apiary — mTLS front for ttyd + tmux window mgmt + web-push PWA
+After=network-online.target apiary-tmux.service apiary-ttyd.service
+Wants=network-online.target apiary-tmux.service
+Requires=apiary-ttyd.service
+
+[Service]
+Type=simple
+# Terminate mTLS on :3443 (the user-facing port). Anything not matched by a
+# local route (static assets, /windows, /push/*) is reverse-proxied to the
+# apiary-ttyd unit on TTYD_UPSTREAM_PORT, which runs loopback-only without TLS.
+Environment=APIARY_STATE_DIR=${STATE_DIR}
+Environment=TMUX_API_PORT=3443
+Environment=TTYD_UPSTREAM_HOST=127.0.0.1
+Environment=TTYD_UPSTREAM_PORT=3441
+ExecStart=${PYTHON_BIN} ${REPO_DIR}/tmux-api.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

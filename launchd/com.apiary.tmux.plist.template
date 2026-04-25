@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.apiary.tmux</string>
+  <key>UserName</key><string>${APIARY_USER}</string>
+  <key>GroupName</key><string>${APIARY_GROUP}</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>5</integer>
+  <key>WorkingDirectory</key><string>${HOME}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>${HOME}</string>
+    <key>TERM</key><string>xterm-256color</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>${TMUX_BIN} has-session -t main 2&gt;/dev/null || ${TMUX_BIN} new-session -d -s main; exec /bin/sleep 2147483647</string>
+  </array>
+  <key>StandardOutPath</key><string>${STATE_DIR}/log/tmux.out</string>
+  <key>StandardErrorPath</key><string>${STATE_DIR}/log/tmux.err</string>
+</dict>
+</plist>

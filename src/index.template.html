@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<title>Apiary</title>
+<style id="wterm-css">__WTERM_CSS__</style>
+<style id="app-css">
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overscroll-behavior: none;
+}
+#terminal {
+  position: fixed;
+  inset: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.wterm {
+  --term-font-size: 16px;
+  --term-row-height: 20px;
+  background: #000;
+  box-shadow: none;
+  border-radius: 0;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* FAB drawer */
+#tm-fab {
+  position: fixed;
+  bottom: 50px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 16px;
+  line-height: 34px;
+  text-align: center;
+  z-index: 9999;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  opacity: 0.7;
+}
+#tm-fab:hover, #tm-fab:active { background: rgba(30,30,30,0.85); color: #fff; opacity: 1; }
+#tm-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }
+#tm-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(340px, 90vw);
+  background: #1e1e1e; color: #fff; z-index: 9999;
+  display: none; flex-direction: column;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.5);
+  font-family: system-ui, sans-serif; font-size: 15px;
+}
+#tm-drawer.open, #tm-backdrop.open { display: flex; }
+.tm-hd { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid #444; gap: 8px; }
+.tm-hd h3 { flex: 1; margin: 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.tm-hd h3 svg { width: 22px; height: 22px; flex-shrink: 0; }
+.tm-hd button { background: none; border: none; color: #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.tm-hd button svg { width: 18px; height: 18px; display: block; }
+.tm-hd button:active { background: #333; }
+.tm-hd button.on { color: #8cf; }
+.tm-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+.tm-err { background: #5a1a1a; color: #fff; padding: 8px 14px; font-size: 13px; }
+.tm-sess { padding: 10px 14px 4px; display: flex; align-items: center; border-top: 1px solid #2a2a2a; }
+.tm-sess:first-child { border-top: none; }
+.tm-sess-name { flex: 1; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
+.tm-sess-add { background: none; border: 1px solid #444; color: #ccc; width: 28px; height: 28px; border-radius: 4px; font-size: 18px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tm-sess-add:active { background: #333; }
+.tm-row { display: flex; align-items: center; padding: 10px 14px; cursor: pointer; border-left: 3px solid transparent; -webkit-tap-highlight-color: transparent; gap: 8px; }
+.tm-row:active { background: #2a2a2a; }
+.tm-row.active { border-left-color: #4ab0ff; background: rgba(0,122,204,0.22); }
+.tm-row.active .tm-name { color: #fff; font-weight: 600; }
+.tm-row.active .tm-idx { color: #cfe6ff; }
+.tm-row.active .tm-duration { color: #dfeeff; }
+.tm-idx { color: #888; font-variant-numeric: tabular-nums; min-width: 18px; }
+.tm-status { flex-shrink: 0; }
+.tm-status.busy { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.75); animation: tm-spin 0.7s linear infinite; box-sizing: border-box; }
+.tm-status.idle { display: none; }
+@keyframes tm-spin { to { transform: rotate(360deg); } }
+.tm-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-duration { color: #bbb; font-size: 12px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.tm-duration:empty { display: none; }
+.tm-kill { background: none; border: none; color: #888; font-size: 16px; padding: 4px 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 4px; }
+.tm-kill:active, .tm-kill:hover { background: #5a1a1a; color: #fff; }
+.tm-row.confirm { background: #2a1a1a; border-left-color: #cc3333; }
+.tm-row.confirm .tm-name { color: #ff8888; }
+.tm-confirm-btn { background: #5a1a1a; border: none; color: #fff; padding: 4px 10px; border-radius: 4px; margin-left: 4px; cursor: pointer; font-size: 13px; }
+.tm-cancel-btn { background: #333; border: none; color: #ccc; padding: 4px 10px; border-radius: 4px; margin-left: 4px; cursor: pointer; font-size: 13px; }
+.tm-empty { padding: 20px 14px; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+<div id="terminal"></div>
+<div id="tm-fab" aria-label="tabs menu">&bull;&bull;&bull;</div>
+<div id="tm-backdrop"></div>
+<div id="tm-drawer" role="dialog" aria-label="tabs">
+  <div class="tm-hd">
+    <h3>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" aria-hidden="true">
+        <rect width="192" height="192" rx="32" fill="#0b1220"/>
+        <polygon points="24,96 60,34 132,34 168,96 132,158 60,158" fill="#f5b841" stroke="#c48e1a" stroke-width="3" stroke-linejoin="round"/>
+        <g fill="none" stroke="#1a1107" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M70 72l22 24-22 24"/>
+          <path d="M100 124h32"/>
+        </g>
+      </svg>
+      apiary
+    </h3>
+    <button id="tm-push" aria-label="toggle notifications" title="notifications"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 8H4c0-2 2-3 2-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></button>
+    <button id="tm-refresh" aria-label="refresh"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3L20 9"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 15"/><path d="M4 20v-5h5"/></svg></button>
+    <button id="tm-close" aria-label="close"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
+  </div>
+  <div class="tm-body" id="tm-body"><div class="tm-empty">Loading...</div></div>
+</div>
+<script>__APP_JS__</script>
+</body>
+</html>

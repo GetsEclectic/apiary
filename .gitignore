@@ -1,0 +1,16 @@
+*.key
+*.crt
+*.csr
+*.ext
+*.p12
+*.srl
+*.bak
+*.bak.*
+*.pre-*
+__pycache__/
+node_modules/
+vapid.json
+subscriptions.json
+push-latest.json
+.claude/
+constitution-log.md

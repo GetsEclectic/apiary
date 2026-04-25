@@ -1,0 +1,16 @@
+{
+  "name": "Apiary",
+  "short_name": "Apiary",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5b841",
+  "theme_color": "#f5b841",
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "capture_links": "existing-client-navigate",
+  "icons": [
+    { "src": "/icon.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" },
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ]
+}
