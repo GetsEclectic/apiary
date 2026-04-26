@@ -828,12 +828,26 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(400, {"error": str(e)})
                     return
 
+            spawn_cmd = "zsh -lic 'claude; exec zsh -li'"
+            fmt = "#{session_name}\t#{window_index}\t#{window_name}"
             r = run_tmux([
                 "new-window", "-t", f"{session}:",
                 "-c", cwd,
-                "-P", "-F", "#{session_name}\t#{window_index}\t#{window_name}",
-                "zsh -lic 'claude; exec zsh -li'",
+                "-P", "-F", fmt,
+                spawn_cmd,
             ])
+            # Tmux destroys a session when its last window is killed, and the
+            # bootstrap unit only fires at boot — so a /new-window call racing
+            # against the close of the last window finds no session (or no
+            # server, if exit-empty took the whole tmux down). Recreate via
+            # new-session, which also revives the server.
+            if r.returncode != 0:
+                r = run_tmux([
+                    "new-session", "-d", "-s", session,
+                    "-c", cwd,
+                    "-P", "-F", fmt,
+                    spawn_cmd,
+                ])
             if r.returncode != 0:
                 self._json(500, {"error": r.stderr.strip()})
                 return

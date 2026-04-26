@@ -19,7 +19,7 @@ ExecStart=${TTYD_BIN} \
   -t rendererType=dom \
   -I ${REPO_DIR}/index.html \
   -W \
-  ${TMUX_BIN} new-session -A -s main
+  ${TMUX_BIN} new-session -A -s apiary
 Restart=on-failure
 RestartSec=3
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Scenario C: FAB drawer talks to the tmux-api sidecar end-to-end.
-# Critical: scope every action to data-session="e2e-test". Never touch "main".
+# Critical: scope every action to data-session="e2e-test". Never touch "apiary".
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 source "$HERE/lib.sh"
@@ -41,10 +41,10 @@ after_kill=$(ab_eval "document.querySelectorAll('.tm-row[data-session=\"e2e-test
 echo "[02-fab] e2e-test windows after kill: $after_kill"
 assert_eq "window count back to before-add" "$before" "$after_kill" || ((fails++))
 
-# Sanity: prod 'main' session count must NOT have changed during this scenario.
+# Sanity: prod 'apiary' session count must NOT have changed during this scenario.
 # (We never touched it, but check defensively.)
-main_count=$(ab_eval "document.querySelectorAll('.tm-row[data-session=\"main\"]').length")
-echo "[02-fab] main windows: $main_count (informational, must be unchanged from a prior count)"
+apiary_count=$(ab_eval "document.querySelectorAll('.tm-row[data-session=\"apiary\"]').length")
+echo "[02-fab] apiary windows: $apiary_count (informational, must be unchanged from a prior count)"
 
 ab click '#tm-close' >/dev/null
 exit $fails

@@ -19,7 +19,7 @@
   <array>
     <string>/bin/sh</string>
     <string>-c</string>
-    <string>${TMUX_BIN} has-session -t main 2&gt;/dev/null || ${TMUX_BIN} new-session -d -s main; exec /bin/sleep 2147483647</string>
+    <string>${TMUX_BIN} has-session -t apiary 2&gt;/dev/null || ${TMUX_BIN} new-session -d -s apiary; exec /bin/sleep 2147483647</string>
   </array>
   <key>StandardOutPath</key><string>${STATE_DIR}/log/tmux.out</string>
   <key>StandardErrorPath</key><string>${STATE_DIR}/log/tmux.err</string>

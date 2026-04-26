@@ -363,7 +363,7 @@ async function consumeLaunchParams() {
   if (!prompt && !cwd) return;
   history.replaceState(null, "", location.pathname);
   try {
-    const payload = { session: sp.get("session") || "main" };
+    const payload = { session: sp.get("session") || "apiary" };
     if (cwd) payload.cwd = cwd;
     if (prompt) payload.prompt = prompt;
     // New window has no history, so no /scrollback fetch — just drop the
@@ -518,7 +518,7 @@ function mountFabDrawer() {
       if (!(w.session in bySession)) { bySession[w.session] = []; order.push(w.session); }
       bySession[w.session].push(w);
     });
-    order.sort((a, b) => (a === "main" ? -1 : b === "main" ? 1 : a.localeCompare(b)));
+    order.sort((a, b) => (a === "apiary" ? -1 : b === "apiary" ? 1 : a.localeCompare(b)));
 
     body.innerHTML = "";
     if (!order.length) {

@@ -32,7 +32,7 @@
     <string>-I</string><string>${REPO_DIR}/index.html</string>
     <string>-W</string>
     <string>${TMUX_BIN}</string>
-    <string>new-session</string><string>-A</string><string>-s</string><string>main</string>
+    <string>new-session</string><string>-A</string><string>-s</string><string>apiary</string>
   </array>
   <key>StandardOutPath</key><string>${STATE_DIR}/log/ttyd.out</string>
   <key>StandardErrorPath</key><string>${STATE_DIR}/log/ttyd.err</string>
