@@ -17,10 +17,12 @@
 # Optional env:
 #   APIARY_NOTIFY_ENDPOINT  default: https://127.0.0.1:3443/push/notify
 #   APIARY_STATE_DIR        default: $HOME/.config/apiary
-#   APIARY_NOTIFY_URL       tap target on the device. default:
-#                           https://<hostname>:3443/  — set to your reachable
-#                           PWA URL or empty if you don't want the tap to
-#                           navigate anywhere.
+#   APIARY_NOTIFY_URL       tap target on the device. default: "/" — a
+#                           same-origin path that the service worker resolves
+#                           against the PWA's scope, so the tap opens the
+#                           installed PWA window rather than a browser tab.
+#                           Set to a different path to land on a sub-page,
+#                           or "" to make the tap a no-op.
 
 set -u
 
@@ -38,7 +40,7 @@ log "fired input_bytes=${#input}"
 # the log. stdout is the JSON payload; an empty stdout means "skip, see log".
 tmp_err=$(mktemp -t apiary-hook-py.XXXXXX)
 payload=$(CLAUDE_HOOK_JSON="$input" \
-          TTYD_NOTIFY_URL="${APIARY_NOTIFY_URL:-https://$(hostname -s):3443/}" \
+          TTYD_NOTIFY_URL="${APIARY_NOTIFY_URL:-/}" \
           python3 - 2>"$tmp_err" <<'PY'
 import json, os, re, sys
 

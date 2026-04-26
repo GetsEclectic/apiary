@@ -4,6 +4,10 @@ All notable changes to Apiary will be documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Fixed
+
+- Notification taps now open the installed PWA instead of a browser tab. The hook was injecting an absolute URL built from `hostname -s`, which is cross-origin from the hostname/IP the PWA was actually installed under (`.local` via mDNS or LAN IP); the service worker's cross-origin `clients.openWindow()` then fell back to the browser. The hook now defaults to the relative path `/`, and the service worker strips any incoming origin and resolves against its own scope, so the tap target is always same-origin as the PWA.
+
 ## [0.1.0] — 2026-04-24
 
 Initial public release.

@@ -102,13 +102,32 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data && event.notification.data.url;
-  if (!url) return;
+  const raw = (event.notification.data && event.notification.data.url) || "/";
+  // The hook may inject an absolute URL whose hostname doesn't match the
+  // origin the PWA was installed from (e.g. bare `hostname -s` vs the
+  // `.local` or LAN-IP origin the user actually visits). A cross-origin
+  // openWindow lands in the browser, not the standalone PWA window — so
+  // strip everything but path+search+hash and resolve against our own scope.
+  const scope = new URL(self.registration.scope);
+  let target;
+  try {
+    const parsed = new URL(raw, scope);
+    target = new URL(parsed.pathname + parsed.search + parsed.hash, scope);
+  } catch (_) {
+    target = scope;
+  }
   event.waitUntil((async () => {
     const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const c of list) {
-      if (c.url === url && "focus" in c) return c.focus();
+      try {
+        if (new URL(c.url).origin === scope.origin && "focus" in c) {
+          if ("navigate" in c && c.url !== target.href) {
+            try { await c.navigate(target.href); } catch (_) {}
+          }
+          return c.focus();
+        }
+      } catch (_) {}
     }
-    return self.clients.openWindow(url);
+    return self.clients.openWindow(target.href);
   })());
 });
