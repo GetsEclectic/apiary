@@ -196,10 +196,22 @@ def run_tmux(args, capture=True):
     )
 
 
+def _attached_sessions():
+    # tmux marks #{window_active}=1 for the active window of *every* session,
+    # not just the one a client is currently displaying. Filtering by attached
+    # session collapses that to the single window the user is actually looking
+    # at — the property the drawer's "active" highlight is meant to reflect.
+    r = run_tmux(["list-clients", "-F", "#{client_session}"])
+    if r.returncode != 0:
+        return set()
+    return {s for s in r.stdout.splitlines() if s}
+
+
 def list_windows():
     r = run_tmux(["list-windows", "-a", "-F", LIST_FORMAT])
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or "tmux list-windows failed")
+    attached = _attached_sessions()
     now = int(time.time())
     rows = []
     seen_ids = set()
@@ -230,7 +242,7 @@ def list_windows():
             "session": session,
             "index": int(index),
             "name": name,
-            "active": active == "1",
+            "active": active == "1" and session in attached,
             "panes": int(panes),
             "idle_secs": idle,
             "busy_secs": busy_secs,
@@ -770,6 +782,13 @@ class Handler(BaseHTTPRequestHandler):
             if r.returncode != 0:
                 self._json(500, {"error": r.stderr.strip()})
                 return
+            # select-window changes the session's active window, but ttyd's
+            # client stays attached to whatever session it was on — so a tap
+            # on a window in a non-attached session moved nothing visible and
+            # appeared to "switch back" once the drawer reopened. switch-client
+            # makes the visible terminal follow. Failure is non-fatal: with no
+            # connected client (e.g. headless tests) there's nothing to follow.
+            run_tmux(["switch-client", "-t", session])
             self._json(200, {"ok": True})
             return
 
