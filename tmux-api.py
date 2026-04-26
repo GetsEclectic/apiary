@@ -67,10 +67,11 @@ TMUX = shutil.which("tmux") or "/usr/bin/tmux"
 # How many lines of pane history to seed wterm with on window switch. Includes
 # both scrollback above the visible pane and the current visible content (we
 # capture -S -<N> to -E -, so the visible screen lands on the wterm grid and
-# anything above it overflows into wterm's ring). Default of 2000 is a balance
-# between phone-friendly payload size and how far up Claude-TUI conversations
-# need to scroll. tmux's own `history-limit` is a separate cap.
-SCROLLBACK_DEFAULT_ROWS = int(os.environ.get("TMUX_API_SCROLLBACK_ROWS", "2000"))
+# anything above it overflows into wterm's ring). 5000 is a balance between
+# reaching deep enough into a Claude-TUI conversation and avoiding the
+# perf hit a 20000-line seed had on window switch. tmux's own history-limit
+# is a separate cap; lines beyond the seed live only in tmux.
+SCROLLBACK_DEFAULT_ROWS = int(os.environ.get("TMUX_API_SCROLLBACK_ROWS", "5000"))
 SCROLLBACK_MAX_ROWS = 100000
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
