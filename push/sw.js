@@ -18,6 +18,38 @@ const VAPID_KEY_URL = new URL("/push/vapid-public-key", self.registration.scope)
 const SUBSCRIBE_URL = new URL("/push/subscribe",        self.registration.scope).toString();
 const FALLBACK   = { title: "agent finished", body: "" };
 
+// App-icon badge (numeric on iOS PWA / desktop, dot on Android via the
+// notification-tray side effect of showNotification). The SW has no
+// localStorage and IDB needs a wrapper to be readable; a Cache entry is the
+// shortest persistent KV available here.
+const BADGE_CACHE = "apiary-badge-v1";
+const BADGE_KEY   = "/_badge_count";
+
+async function readBadgeCount() {
+  try {
+    const cache = await caches.open(BADGE_CACHE);
+    const r = await cache.match(BADGE_KEY);
+    if (!r) return 0;
+    const n = Number(await r.text());
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (_) { return 0; }
+}
+
+async function writeBadgeCount(n) {
+  try {
+    const cache = await caches.open(BADGE_CACHE);
+    await cache.put(BADGE_KEY, new Response(String(n)));
+  } catch (_) {}
+}
+
+async function applyBadge(n) {
+  if (!("setAppBadge" in self.navigator)) return;
+  try {
+    if (n > 0) await self.navigator.setAppBadge(n);
+    else       await self.navigator.clearAppBadge();
+  } catch (_) {}
+}
+
 function b64urlToBytes(s) {
   const pad = "=".repeat((4 - (s.length % 4)) % 4);
   const b64 = (s + pad).replace(/-/g, "+").replace(/_/g, "/");
@@ -97,11 +129,28 @@ self.addEventListener("push", (event) => {
       data: { url: n.url || "" },
       renotify: true,
     });
+    const count = (await readBadgeCount()) + 1;
+    await writeBadgeCount(count);
+    await applyBadge(count);
+  })());
+});
+
+// The page posts this when it becomes visible — opening the PWA directly
+// (without tapping the notification) should still clear the badge.
+self.addEventListener("message", (event) => {
+  if (!event.data || event.data.type !== "clear-badge") return;
+  event.waitUntil((async () => {
+    await writeBadgeCount(0);
+    await applyBadge(0);
   })());
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  event.waitUntil((async () => {
+    await writeBadgeCount(0);
+    await applyBadge(0);
+  })());
   const raw = (event.notification.data && event.notification.data.url) || "/";
   // The hook may inject an absolute URL whose hostname doesn't match the
   // origin the PWA was installed from (e.g. bare `hostname -s` vs the

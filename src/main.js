@@ -301,6 +301,11 @@ async function start() {
   registerServiceWorker();
   pollAttention();
   setInterval(pollAttention, 5000);
+
+  clearBadge();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") clearBadge();
+  });
 }
 
 function pasteError(msg) {
@@ -412,6 +417,20 @@ async function registerServiceWorker() {
   } catch (err) {
     console.warn("SW register failed:", err);
   }
+}
+
+// Reset the app-icon badge whenever the user has eyes on the PWA. The SW
+// keeps its own counter (it's the only context awake when a push arrives), so
+// post a message so the next push starts from 0 rather than accumulating.
+async function clearBadge() {
+  if ("clearAppBadge" in navigator) {
+    try { await navigator.clearAppBadge(); } catch (_) {}
+  }
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (reg.active) reg.active.postMessage({ type: "clear-badge" });
+  } catch (_) {}
 }
 
 function b64urlToBytes(s) {
