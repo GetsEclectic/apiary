@@ -589,13 +589,13 @@ function mountFabDrawer() {
 
   function makeRow(w) {
     const row = document.createElement("div");
+    const busy = typeof w.idle_secs === "number" && w.idle_secs < BUSY_THRESHOLD_SECS;
+    const done = !busy && !!w.needs_attention;
     row.className = "tm-row" + (w.active ? " active" : "") + (done ? " needs-attention" : "");
     row.dataset.session = w.session;
     row.dataset.index = w.index;
     const idx = document.createElement("span"); idx.className = "tm-idx"; idx.textContent = w.index;
     const status = document.createElement("span");
-    const busy = typeof w.idle_secs === "number" && w.idle_secs < BUSY_THRESHOLD_SECS;
-    const done = !busy && !!w.needs_attention;
     status.className = "tm-status " + (busy ? "busy" : done ? "done" : "idle");
     status.setAttribute("aria-label", busy ? "busy" : "idle");
     const nm = document.createElement("span"); nm.className = "tm-name"; nm.textContent = w.name;
