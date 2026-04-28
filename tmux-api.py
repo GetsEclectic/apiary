@@ -99,6 +99,10 @@ POLL_INTERVAL_SECS = 2
 # "now" — without this, restarting tmux-api during a long claude turn would
 # make the FAB show ~0s elapsed while claude's TUI shows the true elapsed.
 _busy_since = {}
+# wid -> unix ts when the window went idle after being busy. Cleared when the
+# user activates that window. Not persisted — loses flags across restarts, but
+# that's acceptable for a personal tool.
+_needs_attention = {}
 _busy_lock = threading.Lock()
 
 # Cache for /windows responses. list_windows() spawns 2 tmux subprocesses;
@@ -258,9 +262,14 @@ def list_windows():
                     _busy_since[wid] = now - idle
                     dirty = True
                 busy_secs = max(0, now - _busy_since[wid])
+                _needs_attention.pop(wid, None)  # busy now, not waiting
             else:
                 if _busy_since.pop(wid, None) is not None:
                     dirty = True
+                    _needs_attention[wid] = now  # just finished
+            if active == "1" and session in attached:
+                _needs_attention.pop(wid, None)  # user is looking at it
+            needs_att = wid in _needs_attention
         rows.append({
             "session": session,
             "index": int(index),
@@ -269,12 +278,16 @@ def list_windows():
             "panes": int(panes),
             "idle_secs": idle,
             "busy_secs": busy_secs,
+            "needs_attention": needs_att,
         })
     with _busy_lock:
         for wid in list(_busy_since.keys()):
             if wid not in seen_ids:
                 _busy_since.pop(wid, None)
                 dirty = True
+        for wid in list(_needs_attention.keys()):
+            if wid not in seen_ids:
+                _needs_attention.pop(wid, None)
         if dirty:
             _save_busy_state_locked()
     return rows
@@ -290,6 +303,13 @@ def _busy_poll_loop():
         except Exception as e:
             print(f"[tmux-api] busy poll failed: {e}", flush=True)
         time.sleep(POLL_INTERVAL_SECS)
+
+
+def _get_window_id(session, index):
+    r = run_tmux(["list-windows", "-t", f"{session}:{index}", "-F", "#{window_id}"])
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    return r.stdout.strip().splitlines()[0]
 
 
 def validate_target(body):
@@ -710,6 +730,16 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"error": str(e)})
             return
+        if url.path == "/status":
+            try:
+                windows = list_windows_cached()
+            except Exception as e:
+                self._json(500, {"error": str(e)})
+                return
+            n_attn = sum(1 for w in windows if w.get("needs_attention"))
+            n_busy = sum(1 for w in windows if w.get("busy_secs") is not None)
+            self._json(200, {"needs_attention": n_attn, "busy": n_busy})
+            return
         if url.path == "/scrollback":
             q = parse_qs(url.query)
             session = (q.get("session") or [""])[0]
@@ -815,6 +845,10 @@ class Handler(BaseHTTPRequestHandler):
             # makes the visible terminal follow. Failure is non-fatal: with no
             # connected client (e.g. headless tests) there's nothing to follow.
             run_tmux(["switch-client", "-t", session])
+            wid = _get_window_id(session, index)
+            if wid:
+                with _busy_lock:
+                    _needs_attention.pop(wid, None)
             self._json(200, {"ok": True})
             return
 

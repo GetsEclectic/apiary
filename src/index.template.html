@@ -85,6 +85,21 @@ html, body {
   }
 }
 
+/* FAB attention badge */
+#tm-fab .tm-fab-badge {
+  position: absolute;
+  top: 4px;
+  right: 1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--honey);
+  border: 1.5px solid #000;
+  display: none;
+  box-shadow: 0 0 6px rgba(245, 184, 65, 0.65);
+}
+#tm-fab.has-attention .tm-fab-badge { display: block; }
+
 /* Backdrop — warm tint, soft blur */
 #tm-backdrop {
   position: fixed; inset: 0;
@@ -260,6 +275,12 @@ html, body {
 .tm-row.active .tm-name { color: #fff8e7; font-weight: 500; }
 .tm-row.active .tm-idx { color: var(--honey); }
 .tm-row.active .tm-duration { color: rgba(245, 184, 65, 0.78); }
+.tm-row.needs-attention {
+  border-left-color: rgba(245, 184, 65, 0.38);
+  background: linear-gradient(90deg, rgba(245, 184, 65, 0.05), transparent 55%);
+}
+.tm-row.needs-attention .tm-name { color: var(--ink); }
+.tm-row.needs-attention .tm-idx { color: rgba(245, 184, 65, 0.62); }
 
 .tm-idx {
   color: var(--ink-fade);
@@ -281,6 +302,10 @@ html, body {
   50%      { opacity: 1;    transform: scale(1); }
 }
 .tm-status.idle { display: none; }
+.tm-status.done {
+  background: rgba(245, 184, 65, 0.45);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
 
 .tm-name {
   flex: 1;
@@ -371,6 +396,7 @@ html, body {
     <circle class="hex-dot" cx="23" cy="26" r="2.1"/>
     <circle class="hex-dot" cx="31" cy="26" r="2.1"/>
   </svg>
+  <span class="tm-fab-badge" aria-hidden="true"></span>
 </button>
 <div id="tm-backdrop"></div>
 <div id="tm-drawer" role="dialog" aria-label="tabs">

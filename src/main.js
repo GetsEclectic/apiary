@@ -83,6 +83,14 @@ function concatInputFrame(opByte, body) {
   return out;
 }
 
+async function pollAttention() {
+  try {
+    const d = await api("/status");
+    const fab = document.getElementById("tm-fab");
+    if (fab) fab.classList.toggle("has-attention", d.needs_attention > 0);
+  } catch (_) {}
+}
+
 async function start() {
   const el = document.getElementById("terminal");
   const term = new WTerm(el, { cursorBlink: true });
@@ -205,6 +213,8 @@ async function start() {
   mountFabDrawer();
   consumeLaunchParams();
   registerServiceWorker();
+  pollAttention();
+  setInterval(pollAttention, 5000);
 }
 
 function pasteError(msg) {
@@ -482,6 +492,7 @@ function mountFabDrawer() {
     drawer.classList.remove("open");
     backdrop.classList.remove("open");
     if (tickerHandle) { clearInterval(tickerHandle); tickerHandle = null; }
+    pollAttention();
   }
 
   function formatDuration(secs) {
@@ -578,13 +589,14 @@ function mountFabDrawer() {
 
   function makeRow(w) {
     const row = document.createElement("div");
-    row.className = "tm-row" + (w.active ? " active" : "");
+    row.className = "tm-row" + (w.active ? " active" : "") + (done ? " needs-attention" : "");
     row.dataset.session = w.session;
     row.dataset.index = w.index;
     const idx = document.createElement("span"); idx.className = "tm-idx"; idx.textContent = w.index;
     const status = document.createElement("span");
     const busy = typeof w.idle_secs === "number" && w.idle_secs < BUSY_THRESHOLD_SECS;
-    status.className = "tm-status " + (busy ? "busy" : "idle");
+    const done = !busy && !!w.needs_attention;
+    status.className = "tm-status " + (busy ? "busy" : done ? "done" : "idle");
     status.setAttribute("aria-label", busy ? "busy" : "idle");
     const nm = document.createElement("span"); nm.className = "tm-name"; nm.textContent = w.name;
     const dur = document.createElement("span"); dur.className = "tm-duration";
