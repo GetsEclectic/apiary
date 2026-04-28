@@ -100,6 +100,28 @@ POLL_INTERVAL_SECS = 2
 # make the FAB show ~0s elapsed while claude's TUI shows the true elapsed.
 _busy_since = {}
 _busy_lock = threading.Lock()
+
+# Cache for /windows responses. list_windows() spawns 2 tmux subprocesses;
+# with the background poll running every 2s and swipe + drawer both calling
+# /windows, caching for 1s avoids redundant work without staling the busy
+# timers (which only matter to within ~1s anyway).
+_windows_cache = None       # (timestamp, result_list)
+_windows_cache_lock = threading.Lock()
+_WINDOWS_CACHE_TTL = 1.0   # seconds
+
+
+def list_windows_cached():
+    global _windows_cache
+    now = time.monotonic()
+    with _windows_cache_lock:
+        if _windows_cache and (now - _windows_cache[0]) < _WINDOWS_CACHE_TTL:
+            return _windows_cache[1]
+    result = list_windows()
+    with _windows_cache_lock:
+        _windows_cache = (now, result)
+    return result
+
+
 _STATE_PATH = os.path.join(
     os.environ.get("XDG_RUNTIME_DIR") or "/tmp",
     f"tmux-api-busy.{PORT}.json",
@@ -259,9 +281,12 @@ def list_windows():
 
 
 def _busy_poll_loop():
+    global _windows_cache
     while True:
         try:
-            list_windows()
+            result = list_windows()
+            with _windows_cache_lock:
+                _windows_cache = (time.monotonic(), result)
         except Exception as e:
             print(f"[tmux-api] busy poll failed: {e}", flush=True)
         time.sleep(POLL_INTERVAL_SECS)
@@ -681,7 +706,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == "/windows":
             try:
-                self._json(200, {"windows": list_windows()})
+                self._json(200, {"windows": list_windows_cached()})
             except Exception as e:
                 self._json(500, {"error": str(e)})
             return

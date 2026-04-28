@@ -38,11 +38,18 @@ function api(path, method, payload) {
 // finger-drag does nothing) until output or a resize incidentally pushes
 // rows into the ring, and what does end up in the ring is whatever tmux
 // happened to paint on the grid — not real history.
-async function seedScrollback(session, index) {
+// rows: how many lines to capture. Omit for the full default (5000, used
+// when opening a window from the drawer where deep history is useful).
+// Swipe uses a small value (~visible screen height) so the switch feels
+// instant; the user can open the drawer and re-select the window if they
+// need to scroll deep into its history.
+async function seedScrollback(session, index, rows) {
   if (!window.term) return;
   window.term.write("\x1b[3J");
   try {
-    const r = await api(`/scrollback?session=${encodeURIComponent(session)}&index=${index}`);
+    const qs = `/scrollback?session=${encodeURIComponent(session)}&index=${index}` +
+               (rows != null ? `&rows=${rows}` : "");
+    const r = await api(qs);
     if (r.data) window.term.write(r.data);
   } catch (err) {
     // Non-fatal: tmux's select-window repaint will still bring the visible
@@ -415,7 +422,9 @@ async function swipeToWindow(offset) {
     if (siblings.length < 2) return;
     const i = siblings.findIndex((w) => w.index === active.index);
     const target = siblings[(i + offset + siblings.length) % siblings.length];
-    await seedScrollback(target.session, target.index);
+    // Swipe is a fast navigation gesture — seed only the visible screen
+    // (~term.rows lines). Deep history is available via the drawer.
+    await seedScrollback(target.session, target.index, window.term ? window.term.rows * 2 : 100);
     await api("/activate", "POST", { session: target.session, index: target.index });
   } catch (err) {
     console.warn("swipe failed:", err);
