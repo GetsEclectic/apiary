@@ -38,11 +38,12 @@ function api(path, method, payload) {
 // finger-drag does nothing) until output or a resize incidentally pushes
 // rows into the ring, and what does end up in the ring is whatever tmux
 // happened to paint on the grid — not real history.
-// rows: how many lines to capture. Omit for the full default (5000, used
-// when opening a window from the drawer where deep history is useful).
-// Swipe uses a small value (~visible screen height) so the switch feels
-// instant; the user can open the drawer and re-select the window if they
-// need to scroll deep into its history.
+// rows: how many lines to capture. Drawer-tap passes ~1000 (enough for
+// most "what was happening here" glances without dragging a 500 KB
+// payload through mTLS on heavy claude windows). Swipe uses a small
+// value (~visible screen height) so the switch feels instant. Either
+// way, the user can scroll back further once attached and tmux's own
+// repaint stream fills more history.
 async function seedScrollback(session, index, rows) {
   if (!window.term) return;
   window.term.write("\x1b[3J");
@@ -146,6 +147,91 @@ async function start() {
   term.onData = sendInput;
   term.onTitle = (t) => { document.title = t; };
   term.onResize = (cols, rows) => sendResize(cols, rows);
+
+  // wterm clears the hidden textarea after every input event, which breaks
+  // soft-keyboard autocomplete: the keyboard calls deleteSurroundingText()
+  // to remove the partial word, but the textarea is already empty so the
+  // deletion is a no-op, then commitText() with the suggestion just appends
+  // — leaving "hel" + "hello " in the shell. Both UK and Gboard hit this
+  // because we set autocorrect/spellcheck off, so neither uses composing
+  // text; both just commitText each character.
+  //
+  // Replace the input/compositionend listeners with a diff-based forwarder
+  // that lets the textarea retain content. On each input event we compare
+  // the current value against what we've already sent to the shell, send
+  // backspaces for chars that disappeared and new chars that appeared.
+  // Trim past the last space so the textarea stays bounded — once a word
+  // is committed, the IME has no reason to retract it.
+  //
+  // Side effect: with content in the textarea, Android Chrome's
+  // scroll-into-view fires on every keystroke and snaps .wterm to the top
+  // of scrollback (same class of bug the focus-pin below already handles).
+  // Mitigate by re-pinning scrollTop for ~150ms after each input event via
+  // a shared RAF loop. RAF runs after the browser's scroll-into-view, so
+  // our pin wins the race instead of being pre-empted.
+  if (hiddenInput && term.input) {
+    hiddenInput.removeEventListener("input", term.input._onInput);
+    hiddenInput.removeEventListener("compositionend", term.input._onCompositionEnd);
+
+    // Move the textarea OUT of .wterm into document.body. Chrome's
+    // scroll-into-view on caret movement walks the DOM tree to find the
+    // nearest scrollable ancestor; while the textarea was a descendant of
+    // .wterm that ancestor was .wterm itself, and every keystroke snapped
+    // the terminal viewport. With the textarea reparented to body, the
+    // walk skips .wterm entirely and lands on a non-scrollable ancestor,
+    // so caret movement no longer disturbs the terminal.
+    document.body.appendChild(hiddenInput);
+
+    let sentText = "";
+
+    const flushDiff = () => {
+      const value = hiddenInput.value;
+      if (value === sentText) return;
+      let i = 0;
+      const minLen = Math.min(sentText.length, value.length);
+      while (i < minLen && sentText[i] === value[i]) i++;
+      const deleteCount = sentText.length - i;
+      const newChars = value.substring(i);
+      if (deleteCount > 0) sendInput("\x7f".repeat(deleteCount));
+      if (newChars) sendInput(newChars);
+      sentText = value;
+      // Don't pin scrollTop here. wterm's _scrollToBottom rounds to a
+      // multiple of --term-row-height, but el.scrollHeight clamps to
+      // (scrollHeight - clientHeight) which usually isn't row-aligned.
+      // Pinning fights that rounding and the user sees a 0-19px wobble
+      // on every keystroke. wterm's render path handles scroll-to-bottom
+      // naturally when the shell echoes the typed chars back.
+      // Once the user commits a word with space, the IME won't retract it,
+      // so drop everything up to and including that space. Also cap at 80
+      // chars to bound the no-space case (long single tokens, URLs, etc.).
+      const lastSpace = value.lastIndexOf(" ");
+      if (lastSpace >= 0) {
+        const remainder = value.substring(lastSpace + 1);
+        hiddenInput.value = remainder;
+        sentText = remainder;
+      } else if (value.length > 80) {
+        const remainder = value.substring(value.length - 40);
+        hiddenInput.value = remainder;
+        sentText = remainder;
+      }
+    };
+
+    hiddenInput.addEventListener("input", (e) => {
+      if (e.isComposing) return;
+      flushDiff();
+    });
+    hiddenInput.addEventListener("compositionend", () => {
+      // Firefox doesn't always fire input after compositionend; flush here
+      // too. Chrome does, and flushDiff's value===sentText guard makes the
+      // duplicate call a no-op.
+      flushDiff();
+    });
+    // Reset the shadow on blur so a returning focus with a different value
+    // doesn't trigger phantom backspaces.
+    hiddenInput.addEventListener("blur", () => {
+      sentText = hiddenInput.value;
+    });
+  }
 
   function connect() {
     ws = new WebSocket(wsUrl(), ["tty"]);
@@ -628,7 +714,7 @@ function mountFabDrawer() {
 
   async function activate(w) {
     try {
-      await seedScrollback(w.session, w.index);
+      await seedScrollback(w.session, w.index, 1000);
       await api("/activate", "POST", { session: w.session, index: w.index });
       closeDrawer();
     } catch (err) {

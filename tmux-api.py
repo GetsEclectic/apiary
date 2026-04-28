@@ -16,6 +16,7 @@ loopback at TTYD_UPSTREAM_HOST:TTYD_UPSTREAM_PORT. WebSocket upgrades
 handshake and piping raw bytes bidirectionally.
 """
 import base64
+import gzip
 import json
 import os
 import re
@@ -533,9 +534,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def _json(self, code, payload):
         body = json.dumps(payload).encode()
+        # /scrollback can return ~500 KB of capture-pane output that compresses
+        # ~10x. Threshold skips compressing /windows, /status, and the bare
+        # {"ok": true} responses where compression overhead isn't worth it.
+        encoding = None
+        if len(body) > 1024 and "gzip" in self.headers.get("Accept-Encoding", ""):
+            body = gzip.compress(body)
+            encoding = "gzip"
         self.send_response(code)
         self._cors()
         self.send_header("Content-Type", "application/json")
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
