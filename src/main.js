@@ -555,6 +555,7 @@ function mountFabDrawer() {
   const pushBtn = document.getElementById("tm-push");
 
   let tickerHandle = null;
+  let refreshHandle = null;
 
   // Hide the push toggle when push isn't available (no SW, cross-origin
   // e2e harness, or the browser lacks PushManager).
@@ -592,11 +593,21 @@ function mountFabDrawer() {
     backdrop.classList.add("open");
     body.dataset.fresh = "1";
     load();
+    // tickDurations() only increments the displayed counter — it has no idea
+    // whether the window is still busy. Without a periodic refetch, a row that
+    // went idle on the server keeps ticking up forever in the open drawer.
+    // Skip while a kill-confirm is mid-flight so re-rendering doesn't wipe it.
+    if (refreshHandle) clearInterval(refreshHandle);
+    refreshHandle = setInterval(() => {
+      if (body.querySelector(".tm-row.confirm")) return;
+      api("/windows").then((d) => render(d.windows || [])).catch(() => {});
+    }, 3000);
   }
   function closeDrawer() {
     drawer.classList.remove("open");
     backdrop.classList.remove("open");
     if (tickerHandle) { clearInterval(tickerHandle); tickerHandle = null; }
+    if (refreshHandle) { clearInterval(refreshHandle); refreshHandle = null; }
     pollAttention();
   }
 
