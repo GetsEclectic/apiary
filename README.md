@@ -65,6 +65,18 @@ brew install ttyd tmux gettext node python@3.12 jq bash
 
 `gettext` provides `envsubst`; Homebrew doesn't link it by default, and `install.sh` resolves it via `brew --prefix gettext`.
 
+### Recommended tmux config
+
+wterm paints the whole viewport's background to match the bottom-right cell's bg color (so colored TUIs visually extend past the rendered grid). Tmux's stock `status-style` is `bg=green,fg=black`, which makes apiary look like a pea-green wash everywhere. Pick one in `~/.tmux.conf`:
+
+```
+set -g status off                         # hide status entirely
+# or
+set -g status-style bg=default,fg=white   # blend with the wterm default bg
+```
+
+Then `tmux source-file ~/.tmux.conf` to pick it up live, or `tmux kill-server` and let the launchd/systemd unit recreate the session.
+
 ## Uninstall
 
 ```bash
