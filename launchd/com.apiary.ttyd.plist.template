@@ -13,6 +13,8 @@
   <dict>
     <key>HOME</key><string>${HOME}</string>
     <key>TERM</key><string>xterm-256color</string>
+    <key>LANG</key><string>en_US.UTF-8</string>
+    <key>COLORTERM</key><string>truecolor</string>
     <key>TTYD</key><string>1</string>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
   </dict>
