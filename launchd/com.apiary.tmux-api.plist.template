@@ -3,8 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>Label</key><string>com.apiary.tmux-api</string>
-  <key>UserName</key><string>${APIARY_USER}</string>
-  <key>GroupName</key><string>${APIARY_GROUP}</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>3</integer>

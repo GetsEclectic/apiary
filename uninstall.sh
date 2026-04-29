@@ -16,11 +16,26 @@ done
 STATE_DIR="${APIARY_STATE_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/apiary}"
 
 if [[ "$OS" == Darwin ]]; then
-  echo ">> stopping and removing launchd services (requires sudo)"
+  AGENT_DIR="${HOME}/Library/LaunchAgents"
+  GUI_DOMAIN="gui/$(id -u)"
+  echo ">> stopping and removing LaunchAgents from $AGENT_DIR"
   for svc in com.apiary.ttyd com.apiary.tmux-api com.apiary.tmux; do
-    sudo launchctl bootout "system/$svc" 2>/dev/null || true
-    sudo rm -f "/Library/LaunchDaemons/${svc}.plist"
+    launchctl bootout "$GUI_DOMAIN/$svc" 2>/dev/null || true
+    rm -f "$AGENT_DIR/${svc}.plist"
   done
+
+  # Earlier versions installed as LaunchDaemons; clean those up too if present.
+  legacy=()
+  for svc in com.apiary.ttyd com.apiary.tmux-api com.apiary.tmux; do
+    [[ -f "/Library/LaunchDaemons/${svc}.plist" ]] && legacy+=("$svc")
+  done
+  if (( ${#legacy[@]} )); then
+    echo ">> also removing ${#legacy[@]} legacy LaunchDaemons (requires sudo)"
+    for svc in "${legacy[@]}"; do
+      sudo launchctl bootout "system/$svc" 2>/dev/null || true
+      sudo rm -f "/Library/LaunchDaemons/${svc}.plist"
+    done
+  fi
 else
   UNIT_DIR="${HOME}/.config/systemd/user"
   if command -v systemctl >/dev/null && [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then

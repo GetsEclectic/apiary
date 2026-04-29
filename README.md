@@ -35,7 +35,7 @@ cd ~/src/apiary
 2. Generates a CA, server cert, client cert, and a `<user>-client.p12` bundle in `~/.config/apiary/` if they don't exist.
 3. Renders service definitions with paths templated to your `$HOME`:
    - **Linux**: three systemd user units into `~/.config/systemd/user/`, enabled with `systemctl --user`.
-   - **macOS**: three launchd plists into `/Library/LaunchDaemons/` via one `sudo` prompt, bootstrapped with `launchctl`. LaunchDaemons (not LaunchAgents) are used so services survive reboot without needing a console login.
+   - **macOS**: three launchd LaunchAgents into `~/Library/LaunchAgents/`, bootstrapped via `launchctl bootstrap gui/<uid>`. Agents — not LaunchDaemons — so each service inherits your login security session and can reach the macOS keychain (Claude Code's `/login` writes there). Trade-off: services start at GUI login, not at boot. If a previous install left `com.apiary.*` plists in `/Library/LaunchDaemons/`, `install.sh` will sudo-clean them as a one-time migration.
 4. Prints the URL to visit from your phone.
 
 ### Getting the certs onto your phone

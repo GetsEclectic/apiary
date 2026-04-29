@@ -93,42 +93,65 @@ if [[ ! -f "$STATE_DIR/vapid.json" ]]; then
 fi
 
 # --- render + install service units ---
-APIARY_USER="$(id -un)"
-APIARY_GROUP="$(id -gn)"
-export REPO_DIR STATE_DIR TTYD_BIN TMUX_BIN PYTHON_BIN APIARY_USER APIARY_GROUP HOME
+export REPO_DIR STATE_DIR TTYD_BIN TMUX_BIN PYTHON_BIN HOME
 
 if [[ "$OS" == Darwin ]]; then
+  AGENT_DIR="${HOME}/Library/LaunchAgents"
+  GUI_DOMAIN="gui/$(id -u)"
+
+  # One-time migration from earlier LaunchDaemons layout. LaunchDaemons run in
+  # a separate security session and can't reach the user's login keychain,
+  # which broke Claude Code's `/login`. We're moving everything to LaunchAgents.
+  legacy=()
+  for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
+    [[ -f "/Library/LaunchDaemons/${svc}.plist" ]] && legacy+=("$svc")
+  done
+  if (( ${#legacy[@]} )); then
+    echo ">> migrating ${#legacy[@]} legacy LaunchDaemons out of /Library/LaunchDaemons (one-time sudo)"
+    for svc in "${legacy[@]}"; do
+      sudo launchctl bootout "system/$svc" 2>/dev/null || true
+      sudo rm -f "/Library/LaunchDaemons/${svc}.plist"
+    done
+    # The old daemon's tmux server was forked into the background and survives
+    # bootout. Left alone, the new agent's `has-session` check finds it and
+    # adopts it — so every spawned shell stays in the old daemon's security
+    # session and can't reach the keychain. Force a fresh server.
+    if pgrep -fq "tmux .* -s apiary"; then
+      echo ">> killing stale tmux server (also kills any other tmux sessions on this machine)"
+      "$TMUX_BIN" kill-server 2>/dev/null || true
+    fi
+  fi
+
   STAGING="$STATE_DIR/launchd-staging"
-  mkdir -p "$STAGING"
+  mkdir -p "$STAGING" "$AGENT_DIR"
   echo ">> rendering plists into $STAGING"
   for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
     "$ENVSUBST_BIN" \
-      '${REPO_DIR} ${STATE_DIR} ${TTYD_BIN} ${TMUX_BIN} ${PYTHON_BIN} ${APIARY_USER} ${APIARY_GROUP} ${HOME}' \
+      '${REPO_DIR} ${STATE_DIR} ${TTYD_BIN} ${TMUX_BIN} ${PYTHON_BIN} ${HOME}' \
       < "$REPO_DIR/launchd/${svc}.plist.template" \
       > "$STAGING/${svc}.plist"
   done
 
-  echo ">> installing plists into /Library/LaunchDaemons (requires sudo)"
+  echo ">> installing LaunchAgents into $AGENT_DIR"
   for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
-    sudo install -m 0644 -o root -g wheel \
-      "$STAGING/${svc}.plist" "/Library/LaunchDaemons/${svc}.plist"
+    install -m 0644 "$STAGING/${svc}.plist" "$AGENT_DIR/${svc}.plist"
   done
 
-  echo ">> (re)loading launchd services"
+  echo ">> (re)loading launchd services in $GUI_DOMAIN"
   for svc in com.apiary.ttyd com.apiary.tmux-api com.apiary.tmux; do
-    sudo launchctl bootout "system/$svc" 2>/dev/null || true
+    launchctl bootout "$GUI_DOMAIN/$svc" 2>/dev/null || true
   done
   for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
-    sudo launchctl bootstrap system "/Library/LaunchDaemons/${svc}.plist"
+    launchctl bootstrap "$GUI_DOMAIN" "$AGENT_DIR/${svc}.plist"
   done
   for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
-    sudo launchctl kickstart -k "system/$svc"
+    launchctl kickstart -k "$GUI_DOMAIN/$svc"
   done
 
   echo
   echo "Services:"
   for svc in com.apiary.tmux com.apiary.tmux-api com.apiary.ttyd; do
-    state="$(sudo launchctl print "system/$svc" 2>/dev/null | awk '/state =/{print $3; exit}')"
+    state="$(launchctl print "$GUI_DOMAIN/$svc" 2>/dev/null | awk '/state =/{print $3; exit}')"
     printf "  %-22s %s\n" "$svc" "${state:-unknown}"
   done
 else
