@@ -5,8 +5,8 @@
 Access your home machine's terminal — and the agentic CLIs running in it — from your phone, over mTLS.
 
 <p align="center">
-  <img src="screenshot-session.png" alt="Claude Code running in an apiary tmux window on mobile, mid-task" width="280">
-  <img src="screenshot-drawer.png" alt="Apiary window-switcher drawer on mobile, showing three tmux windows with busy elapsed-time badges" width="280">
+  <img src="screenshot-session.png" alt="Claude Code running in an apiary tmux window on mobile, mid-task" width="380">
+  <img src="screenshot-drawer.png" alt="Apiary window-switcher drawer on mobile, showing three tmux windows with busy elapsed-time badges" width="380">
 </p>
 
 Apiary is a thin stack: `ttyd` serving a [wterm](https://github.com/vercel-labs/wterm)-based phone-optimized UI, backed by a long-lived `tmux` session that outlives the browser tab. Think of it as a keeper for a collection of agents (Claude Code, Codex, aider, whatever you run) that keep working while you're away from your desk.
