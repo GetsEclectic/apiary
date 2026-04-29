@@ -104,6 +104,14 @@ _busy_since = {}
 # user activates that window. Not persisted — loses flags across restarts, but
 # that's acceptable for a personal tool.
 _needs_attention = {}
+# wid -> unix ts of the most recent moment we observed the window active in an
+# attached session (or the moment of an explicit /activate). Switching away
+# from a window causes a one-shot pane redraw that tmux records as activity;
+# without this, the next busy→idle transition would re-flag a window the user
+# just looked at. Any flag transition within the grace window is treated as
+# user-induced and suppressed.
+_last_active_at = {}
+ACTIVATION_GRACE_SECS = 5
 _busy_lock = threading.Lock()
 
 # Cache for /windows responses. list_windows() spawns 2 tmux subprocesses;
@@ -255,7 +263,10 @@ def list_windows():
         except ValueError:
             idle = None
         busy_secs = None
+        is_active_attached = active == "1" and session in attached
         with _busy_lock:
+            if is_active_attached:
+                _last_active_at[wid] = now
             if idle is not None and idle < BUSY_THRESHOLD_SECS:
                 # First observation of this busy spell: best guess for the
                 # start is the last activity timestamp (now - idle).
@@ -267,8 +278,12 @@ def list_windows():
             else:
                 if _busy_since.pop(wid, None) is not None:
                     dirty = True
-                    _needs_attention[wid] = now  # just finished
-            if active == "1" and session in attached:
+                    # Only flag if the spell didn't end in a grace window
+                    # after the user last viewed this pane — otherwise the
+                    # deselect-redraw from switching away re-flags it.
+                    if (now - _last_active_at.get(wid, 0)) >= ACTIVATION_GRACE_SECS:
+                        _needs_attention[wid] = now  # just finished
+            if is_active_attached:
                 _needs_attention.pop(wid, None)  # user is looking at it
             needs_att = wid in _needs_attention
         rows.append({
@@ -289,6 +304,9 @@ def list_windows():
         for wid in list(_needs_attention.keys()):
             if wid not in seen_ids:
                 _needs_attention.pop(wid, None)
+        for wid in list(_last_active_at.keys()):
+            if wid not in seen_ids:
+                _last_active_at.pop(wid, None)
         if dirty:
             _save_busy_state_locked()
     return rows
@@ -859,6 +877,10 @@ class Handler(BaseHTTPRequestHandler):
             if wid:
                 with _busy_lock:
                     _needs_attention.pop(wid, None)
+                    # Anchor the grace window now, ahead of the next poll, so
+                    # the deselect-redraw of whatever was previously active
+                    # doesn't race the bg loop into re-flagging it.
+                    _last_active_at[wid] = time.time()
             self._json(200, {"ok": True})
             return
 
