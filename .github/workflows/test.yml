@@ -54,7 +54,7 @@ jobs:
             https://localhost:3443/windows | tee /tmp/windows.json
           jq -e '.windows | length >= 1' /tmp/windows.json
       - name: tmux session check
-        run: tmux list-sessions | grep -E '^main:'
+        run: tmux list-sessions | grep -E '^apiary:'
       - name: Dump logs on failure
         if: failure()
         run: |
