@@ -135,6 +135,15 @@ def list_windows_cached():
     return result
 
 
+def _invalidate_windows_cache():
+    # The frontend's load() after /kill or /new-window races the 1s cache TTL
+    # plus the background poll's refresh — without this, a killed window can
+    # linger in the drawer for up to a full poll cycle.
+    global _windows_cache
+    with _windows_cache_lock:
+        _windows_cache = None
+
+
 _STATE_PATH = os.path.join(
     os.environ.get("XDG_RUNTIME_DIR") or "/tmp",
     f"tmux-api-busy.{PORT}.json",
@@ -894,6 +903,7 @@ class Handler(BaseHTTPRequestHandler):
             if r.returncode != 0:
                 self._json(500, {"error": r.stderr.strip()})
                 return
+            _invalidate_windows_cache()
             self._json(200, {"ok": True})
             return
 
@@ -951,6 +961,7 @@ class Handler(BaseHTTPRequestHandler):
             if prompt:
                 schedule_prefill(f"{parts[0]}:{int(parts[1])}", prompt)
 
+            _invalidate_windows_cache()
             self._json(200, {
                 "session": parts[0],
                 "index": int(parts[1]),
