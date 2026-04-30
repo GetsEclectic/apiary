@@ -110,6 +110,13 @@ Two integrations are currently Claude-Code-specific, not generic:
 
 Adapters for Codex and aider are welcome — open an issue or PR.
 
+## Typing from your phone
+
+Phone keyboards are bad at terminal input — control, tab, arrows, and punctuation-heavy syntax are all awkward to thumb-type. Two things make apiary pleasant to drive on mobile:
+
+- **[Wispr Flow](https://wisprflow.ai/) for dictation.** Most prompts to Claude Code, commit messages, and longer prose are faster (and less typo-prone) dictated than thumb-typed. Where dictation gets minor things wrong, the LLM on the other end usually copes.
+- **[Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard) (Android) for actual keys.** An on-screen IME with visible control, shift, tab, and arrow keys. When you need to drop into vim, navigate tmux, or send the punctuation the stock keyboard buries three menus deep, it's the difference between usable and not.
+
 ## Letting agents see your phone (Android)
 
 If you want an agent running in the apiary session to see what's on your phone screen — UI under test, a rendered page, a weird dialog you're asking about — pair the phone with the home machine once via Android 11+ Wireless Debugging (Settings → System → Developer options → Wireless debugging → Pair device with pairing code). `adb` on most distros ships with mDNS support, so the device auto-reconnects whenever Wireless Debugging is on, and the agent can grab frames with `adb exec-out screencap -p > file.png` from any session without a reconnect step.
